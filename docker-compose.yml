@@ -1,13 +1,24 @@
-version: '3'
-
-volumes:
-  postgres-data:
-  redis-data:
+version: '3.6'
 
 services:
+  greenlight:
+    image: bigbluebutton/greenlight:v2
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      DB_ADAPTER: postgresql
+      DB_HOST: postgres
+      DB_NAME: greenlight
+      DB_USERNAME: postgres
+      DB_PASSWORD: password
+      BIGBLUEBUTTON_ENDPOINT: https://${URL_HOST}/bigbluebutton/api/
+      BIGBLUEBUTTON_SECRET: ${LOADBALANCER_SECRET}
+      SECRET_KEY_BASE: ${SECRET_KEY_BASE}
+    ports:
+      - 5000:80
+
   postgres:
     image: postgres:11.5-alpine
-    container_name: postgres
     restart: unless-stopped
     volumes:
       - postgres-data:/var/lib/postgresql/data
@@ -17,14 +28,12 @@ services:
 
   redis:
     image: redis:5.0-alpine
-    container_name: redis
     restart: on-failure
     volumes:
       - redis-data:/data
 
   certbot:
     image: certbot/certbot
-    container_name: certbot
     volumes:
       - ./log/certbot:/var/log/letsencrypt
       - ./data/certbot/conf:/etc/letsencrypt
@@ -33,7 +42,6 @@ services:
 
   scalelite-nginx:
     image: ${SCALELITE_REPO:-blindsidenetwks}/scalelite:${SCALELITE_TAG:-v1}-nginx
-    container_name: scalelite-nginx
     restart: unless-stopped
     ports:
       - "80:80"
@@ -52,7 +60,6 @@ services:
 
   scalelite-api:
     image: ${SCALELITE_REPO:-blindsidenetwks}/scalelite:${SCALELITE_TAG:-v1}-api
-    container_name: scalelite-api
     restart: unless-stopped
     ports:
       - "3000:3000"
@@ -73,7 +80,6 @@ services:
 
   scalelite-poller:
     image: ${SCALELITE_REPO:-blindsidenetwks}/scalelite:${SCALELITE_TAG:-v1}-poller
-    container_name: scalelite-poller
     restart: unless-stopped
     environment:
       - REDIS_URL=${REDIS_URL:-redis://redis:6379}
@@ -87,7 +93,6 @@ services:
 
   scalelite-recording-importer:
     image: ${SCALELITE_REPO:-blindsidenetwks}/scalelite:${SCALELITE_TAG:-v1}-recording-importer
-    container_name: scalelite-recording-importer
     restart: unless-stopped
     environment:
       - REDIS_URL=${REDIS_URL:-redis://redis:6379}
@@ -101,3 +106,7 @@ services:
       - scalelite-api
     logging:
       driver: journald
+
+volumes:
+  postgres-data:
+  redis-data:
